@@ -21,7 +21,7 @@ player_position = vector(1,2,3)
 LENGTH = 400
 WIDTH = 400
 HEIGHT = 50
-RATE = 50
+RATE = 100
 
 #creates arena
 arenafloor = box(pos=(0,0,0), size=(4,WIDTH,LENGTH), color=color.orange, material = tex2, axis=(0,1,0))
@@ -129,79 +129,52 @@ def populate_walls(Tokens_per_wallx,Tokens_per_wallz):
             box = Marker(2,xpos+WIDTH-2,ypos,zposnew,(-1,0,0),"token arena")
         counter +=1
 
-#Special Cases
-#If either motor is zero, speeddiff = 1 or -1
-#If one motor forward and one back and equal, pivot = box position
-#If both negative 
-def runsim():
+'''
+New version calculates moment caused by each motor
+'''
+   
+    
+#function contains usercode as it appears visual must run in main thread 
+def usercode():
+    while True:
+        R.motors[0].speed = 30.0
+        R.motors[1].speed = 50.0
+        time.sleep(2)
+        R.motors[0].speed = 50.0
+        R.motors[1].speed = 10.0
+        time.sleep(2)
+        R.motors[0].speed = -50.0
+        R.motors[1].speed = 50.0
+        time.sleep(1)
+        R.motors[0].speed = -100.0
+        R.motors[1].speed = -100.0
+        time.sleep(5)
+
+#sim code is here
+if __name__ == "__main__":
     for x in xrange(41,50):
         marker_list.append(Token(x))
-    populate_walls(5,5)
+        populate_walls(5,5)
     global R
     R = Robot(0,15,0)
-    R.motors[0].speed = 0.0
-    R.motors[1].speed = 0.0
-    thread.start_new_thread(updatemotion,())
-    
+    thread.start_new_thread(usercode,())
     while True:
-        rate(100)
-        sleep(1)
-        R.motors[0].speed = 50.0
-        R.motors[1].speed = 50.0
-        sleep(4)
-        R.motors[0].speed = 0.0
-        R.motors[1].speed = 0.0
-        R.motors[0].speed = -50.0
-        R.motors[1].speed = 50.0
-        sleep(2)
-        R.motors[0].speed = 0.0
-        R.motors[1].speed = 0.0
-        R.motors[0].speed = -50.0
-        R.motors[1].speed = -50.0
-        sleep(2)
-        R.motors[0].speed = 0.0
-        R.motors[1].speed = 0.0
-        R.motors[0].speed = 50.0
-        R.motors[1].speed = -50.0
-        
-        
-def updatemotion():
+		#Goes a bit wonky without the prints, not sure why
+        print "looping"
+        rate(RATE)
+		#Calculates turning effect of each motor and uses them to make a turn
+        averagespeed = (R.motors[0].speed + R.motors[1].speed)/2
+        velocity = norm(R.box.axis)*averagespeed/RATE
+        moment0 = R.motors[0].speed
+        moment1 = -R.motors[1].speed
+        totalmoment = (moment0 + moment1)/RATE
+		#Check for collisions with walls
+        newpos = R.box.pos+velocity
+        if newpos.x > (-WIDTH/2) + 30 and newpos.x < WIDTH/2 -30 and newpos.z  < LENGTH/2 -30 and newpos.z > -LENGTH/2+30:
+            R.box.pos += velocity
+            R.box.rotate(angle=totalmoment/RATE, axis = (0,1,0), origin = R.box.pos)
+        print velocity
+
     
-    oldspeed1 = 1.0
-    oldspeed2 = 1.0
-    while True:
-        global R
-        if oldspeed1 != R.motors[0].speed or oldspeed2 != R.motors[1].speed:
-            oldspeed1 = R.motors[0].speed
-            oldspeed2 = R.motors[1].speed
-            print "stuff"
-            pivot = vector(R.box.axis.z,0,-R.box.axis.x)
-            pivot = norm(pivot)
-            averagespeed = (abs(R.motors[0].speed) + abs(R.motors[1].speed))/2
-            speeddiff = (R.motors[0].speed - R.motors[1].speed)/100
-            if speeddiff == 0:
-                speeddiff += 0.000000001
-            if (R.motors[0].speed < 0.1 and R.motors[0].speed > -0.1):
-                speeddiff = 1
-            elif (R.motors[1].speed < 0.1 and R.motors[1].speed > -0.1):
-                speeddiff = -1
-            pivot = pivot * R.box.size.z/2 / speeddiff
-            radius = mag(pivot)
-            if (R.motors[0].speed > 0 and R.motors[1].speed < 0) or (R.motors[0].speed < 0 and R.motors[1].speed > 0):
-                pivot = R.box.pos
-                radius = R.box.size.z
-            if R.motors[1].speed>R.motors[0].speed:
-                print "bigger than"
-                radius = radius*-1
-            if R.motors[0].speed < 0 and R.motors[1].speed < 0:
-                averagespeed = -averagespeed
-            print averagespeed
-            angularvelocity = averagespeed/radius
-        if R.box.pos.x > -WIDTH/2 and R.box.pos.x < WIDTH/2 and R.box.pos.z < LENGTH/2 and R.box.pos.z > -LENGTH/2:
-            R.box.rotate(angle=angularvelocity/RATE, axis=(0,1,0), origin = pivot )
-                
-        else:
-            print R.box.pos
-        wait(0.02)    
-if __name__ == "__main__":
-    runsim()
+
+
