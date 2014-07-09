@@ -1,4 +1,4 @@
-3dRoboExperiment
-================
+3dRoboSim
+=========
 
-Fiddling with stuff
+3d version of the Robot Simulator
